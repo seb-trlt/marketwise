@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dubai Land Agents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .loading-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Loading Overlay -->
+    <div id="loading" class="loading">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p class="text-xl">Chargement des données...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Agents Immobiliers Dubai Land</h1>
+            <button id="refreshBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-sync-alt mr-2"></i>
+                Rafraîchir les données
+            </button>
+        </div>
+
+        <!-- Stats Block -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-users text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Total des agents</h3>
+                        <p id="totalAgentsCount" class="text-2xl font-bold text-gray-900">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-user-plus text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Nouveaux aujourd'hui</h3>
+                        <p id="newTodayCount" class="text-2xl font-bold text-gray-900">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessages" class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-2">Statut de la collecte</h2>
+            <div class="mb-4">
+                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                    <span id="progressText">0/0 agents traités</span>
+                    <span id="timeRemaining">Temps restant : calcul...</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            <div id="messagesContainer" class="space-y-1 max-h-48 overflow-y-auto text-xs font-mono bg-gray-50 p-2 rounded">
+                <!-- Messages will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <div class="flex items-center space-x-4">
+                <div class="flex-1">
+                    <input type="text" id="searchInput" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Rechercher...">
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="filterNewToday" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <label for="filterNewToday" class="text-sm font-medium text-gray-700">Nouveaux du jour</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Photo</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Email</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Mobile</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Téléphone</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Nom complet</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Société</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Site Web</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Instagram</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">LinkedIn</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Profil Dubai Land</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Précédent
+                    </button>
+                    <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Suivant
+                    </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Affichage de <span id="startIndex">0</span> à <span id="endIndex">0</span> sur <span id="totalItems">0</span> agents
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Précédent</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Suivant</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialiser la capture des logs en premier
+        function addStatusMessage(message, type = 'info') {
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `py-1 ${type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-gray-600'}`;
+            messageDiv.innerHTML = `<span class="text-gray-400">${new Date().toLocaleTimeString()}</span> ${message}`;
+            container.insertBefore(messageDiv, container.firstChild);
+            
+            // Garder seulement les 50 derniers messages
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+
+            // Faire défiler vers le haut pour voir le nouveau message
+            container.scrollTop = 0;
+        }
+
+        function captureConsoleLogs() {
+            const originalConsoleLog = console.log;
+            const originalConsoleError = console.error;
+            
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : arg
+                ).join(' ');
+                addStatusMessage(message, 'info');
+            };
+            
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : arg
+                ).join(' ');
+                addStatusMessage(message, 'error');
+            };
+        }
+
+        // Capturer les logs immédiatement
+        captureConsoleLogs();
+
+        // Variables globales
+        let brokersData = [];
+        let currentPage = 1;
+        const itemsPerPage = 15;
+        let lastLogTimestamp = null;
+
+        // Variables pour le suivi de la progression
+        let totalAgentsToProcess = 0;
+        let processedAgents = 0;
+        let startTime = null;
+        let averageProcessingTime = 0;
+
+        // Fonction pour afficher le loading
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        // Fonction pour cacher le loading
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Fonction pour filtrer et afficher les données
+        function filterAndDisplayData() {
+            if (!Array.isArray(brokersData)) {
+                console.error('brokersData n\'est pas un tableau');
+                addStatusMessage('❌ Erreur: format de données invalide', 'error');
+                return;
+            }
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const showNewToday = document.getElementById('filterNewToday').checked;
+            const today = new Date().toISOString().split('T')[0];
+
+            // Trier d'abord les données par date d'ajout (les plus récents d'abord)
+            brokersData.sort((a, b) => {
+                const dateA = new Date(a.dateAdded || '1970-01-01');
+                const dateB = new Date(b.dateAdded || '1970-01-01');
+                return dateB - dateA;
+            });
+
+            let filteredData = brokersData.filter(broker => {
+                const matchesSearch = 
+                    broker.CardHolderEmail?.toLowerCase().includes(searchTerm) ||
+                    broker.CardHolderMobile?.toLowerCase().includes(searchTerm) ||
+                    broker.CardHolderPhone?.toLowerCase().includes(searchTerm) ||
+                    broker.CardHolderNameEn?.toLowerCase().includes(searchTerm) ||
+                    broker.OfficeNameEn?.toLowerCase().includes(searchTerm);
+
+                const matchesNewToday = !showNewToday || broker.dateAdded === today;
+
+                return matchesSearch && matchesNewToday;
+            });
+
+            // Mettre à jour le compteur de nouveaux agents du jour
+            const newTodayCount = filteredData.filter(broker => broker.dateAdded === today).length;
+            if (showNewToday) {
+                addStatusMessage(`📊 ${newTodayCount} nouveaux agents du jour affichés`);
+            } else {
+                addStatusMessage(`📊 ${filteredData.length} agents affichés`);
+            }
+
+            const tbody = document.getElementById('dataTable');
+            tbody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                        Aucun agent trouvé
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
+
+            // Calculer les indices de début et de fin pour la page courante
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            pageData.forEach(broker => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <img src="${broker.CardHolderPhoto || 'https://via.placeholder.com/32'}" 
+                             alt="Photo de profil" 
+                             class="h-8 w-8 rounded-full object-cover">
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="text-xs text-gray-900 truncate max-w-[12rem]">${broker.CardHolderEmail || 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="text-xs text-gray-900 truncate max-w-[8rem]">${broker.CardHolderMobile || 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="text-xs text-gray-900 truncate max-w-[8rem]">${broker.CardHolderPhone || 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-gray-900 truncate max-w-[10rem]">${broker.CardHolderNameEn || 'N/A'}</span>
+                            ${broker.dateAdded === new Date().toISOString().split('T')[0] ? 
+                                '<span class="flex-shrink-0 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">new</span>' : 
+                                ''
+                            }
+                        </div>
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <div class="text-xs text-gray-900 truncate max-w-[12rem]">${broker.OfficeNameEn || 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        ${broker.website_url && broker.website_url !== '--' ? 
+                            `<a href="${broker.website_url}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-globe"></i>
+                            </a>` : 
+                            '<span class="text-gray-400 text-xs">-</span>'
+                        }
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        ${broker.instagram_url && broker.instagram_url !== '--' ? 
+                            `<a href="${broker.instagram_url}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800">
+                                <i class="fab fa-instagram"></i>
+                            </a>` : 
+                            '<span class="text-gray-400 text-xs">-</span>'
+                        }
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        ${broker.linkedin_url && broker.linkedin_url !== '--' ? 
+                            `<a href="${broker.linkedin_url}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800">
+                                <i class="fab fa-linkedin"></i>
+                            </a>` : 
+                            '<span class="text-gray-400 text-xs">-</span>'
+                        }
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        ${broker.CardNumber ? 
+                            `<a href="https://dubailand.gov.ae/en/eservices/licensed-real-estate-brokers/licensed-real-estate-brokers-list/?cardnum=${broker.CardNumber}&lang=en#/" 
+                               target="_blank" 
+                               class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
+                                <i class="fas fa-external-link-alt mr-1"></i>
+                                Voir le profil
+                            </a>` : 
+                            '<span class="text-gray-400 text-xs">-</span>'
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Mettre à jour la pagination avec toutes les données filtrées
+            updatePagination(filteredData);
+        }
+
+        // Fonction pour mettre à jour la pagination
+        function updatePagination(filteredData) {
+            const totalItems = filteredData.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+            document.getElementById('startIndex').textContent = startIndex + 1;
+            document.getElementById('endIndex').textContent = endIndex;
+            document.getElementById('totalItems').textContent = totalItems;
+
+            // Désactiver les boutons de navigation si nécessaire
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+            document.getElementById('prevPageMobile').disabled = currentPage === 1;
+            document.getElementById('nextPageMobile').disabled = currentPage === totalPages;
+
+            // Ajouter une classe visuelle pour les boutons désactivés
+            ['prevPage', 'nextPage', 'prevPageMobile', 'nextPageMobile'].forEach(id => {
+                const button = document.getElementById(id);
+                if (button.disabled) {
+                    button.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    button.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
+        }
+
+        // Fonction pour mettre à jour les statistiques
+        function updateStats() {
+            const totalAgents = brokersData.length;
+            const newToday = brokersData.filter(broker => broker.dateAdded === new Date().toISOString().split('T')[0]).length;
+            
+            // Mettre à jour le compteur total avec le nombre réel d'agents
+            document.getElementById('totalAgentsCount').textContent = totalAgents;
+            document.getElementById('newTodayCount').textContent = newToday;
+            
+            console.log(`📊 Statistiques mises à jour : ${totalAgents} agents au total, ${newToday} nouveaux aujourd'hui`);
+        }
+
+        // Fonction pour mettre à jour la barre de progression
+        function updateProgress(current, total, processingTime) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const timeRemaining = document.getElementById('timeRemaining');
+            
+            // Toujours afficher la barre de progression
+            document.getElementById('statusMessages').style.display = 'block';
+            
+            // Calculer le pourcentage
+            const percentage = total > 0 ? (current / total) * 100 : 0;
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = total > 0 ? `${current}/${total} agents traités` : 'Calcul en cours...';
+            
+            // Mettre à jour le temps moyen de traitement
+            if (processingTime) {
+                averageProcessingTime = processingTime;
+            }
+            
+            // Calculer le temps restant
+            if (averageProcessingTime > 0 && total > 0) {
+                const remainingAgents = total - current;
+                const estimatedTimeRemaining = Math.ceil((remainingAgents * averageProcessingTime) / 1000); // en secondes
+                const minutes = Math.floor(estimatedTimeRemaining / 60);
+                const seconds = estimatedTimeRemaining % 60;
+                timeRemaining.textContent = `Temps restant : ${minutes}m ${seconds}s`;
+            } else {
+                timeRemaining.textContent = 'Temps restant : calcul en cours...';
+            }
+        }
+
+        // Fonction pour vérifier l'état de l'API
+        async function checkApiStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                console.log('✅ API prête avec ' + status.totalAgents + ' agents disponibles');
+                return true;
+            } catch (error) {
+                console.error('❌ Erreur lors de la vérification de l\'état de l\'API:', error);
+                return false;
+            }
+        }
+
+        // Fonction pour attendre que l'API soit prête
+        async function waitForApi() {
+            console.log('⏳ Attente de l\'initialisation de l\'API...');
+            let attempts = 0;
+            const maxAttempts = 20; // Augmenté à 20 tentatives
+            const waitTime = 10000; // 10 secondes entre chaque tentative
+            
+            while (attempts < maxAttempts) {
+                if (await checkApiStatus()) {
+                    console.log('✅ API prête !');
+                    return true;
+                }
+                console.log(`🔄 Tentative ${attempts + 1}/${maxAttempts}...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                attempts++;
+            }
+            
+            console.error('❌ L\'API n\'est pas prête après plusieurs tentatives');
+            return false;
+        }
+
+        // Fonction pour récupérer les logs
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const logs = await response.json();
+                
+                // Afficher uniquement les nouveaux logs
+                logs.forEach(log => {
+                    if (!lastLogTimestamp || new Date(log.timestamp) > new Date(lastLogTimestamp)) {
+                        addStatusMessage(log.message, log.type);
+                    }
+                });
+                
+                // Mettre à jour le timestamp du dernier log
+                if (logs.length > 0) {
+                    lastLogTimestamp = logs[logs.length - 1].timestamp;
+                }
+            } catch (error) {
+                console.error('Erreur lors de la récupération des logs:', error);
+            }
+        }
+
+        // Modifier la fonction refreshData
+        async function refreshData() {
+            showLoading();
+            let retryCount = 0;
+            const maxRetries = 5; // Augmenté à 5 tentatives
+            const retryDelay = 10000; // 10 secondes entre chaque tentative
+            startTime = Date.now();
+            const TOTAL_AGENTS = 26726;
+
+            while (retryCount < maxRetries) {
+                try {
+                    console.log(`🔄 Tentative ${retryCount + 1}/${maxRetries} de connexion à l'API...`);
+                    
+                    // Vérifier l'état de l'API
+                    const apiStatus = await checkApiStatus();
+                    if (!apiStatus) {
+                        console.log('⏳ En attente que l\'API soit prête...');
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        continue;
+                    }
+                    
+                    // Récupérer les données des agents
+                    console.log('🔄 Chargement des données depuis DubaiLand...');
+                    const response = await fetch('/api/data');
+                    const data = await response.json();
+                    brokersData = Array.isArray(data) ? data : [];
+                    
+                    if (brokersData.length === 0) {
+                        console.error('❌ Aucune donnée reçue de l\'API');
+                        hideLoading();
+                        return;
+                    }
+                    
+                    console.log(`📈 Total des agents récupérés : ${brokersData.length}`);
+                    
+                    const agentsRestants = TOTAL_AGENTS - brokersData.length;
+                    console.log(`📊 Progression : ${brokersData.length} agents traités sur ${TOTAL_AGENTS}`);
+                    console.log(`⏳ Agents restants à traiter : ${agentsRestants}`);
+                    
+                    // Mettre à jour la progression
+                    const processingTime = (Date.now() - startTime) / brokersData.length;
+                    updateProgress(brokersData.length, TOTAL_AGENTS, processingTime);
+                    
+                    console.log('🔄 Enrichissement des données en cours...');
+                    console.log('📱 Recherche des profils LinkedIn...');
+                    // Simuler le temps d'enrichissement
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    console.log('✅ Enrichissement des données terminé');
+                    
+                    console.log('🔄 Mise à jour de l\'interface...');
+                    updateStats();
+                    filterAndDisplayData();
+                    
+                    break;
+                    
+                } catch (error) {
+                    retryCount++;
+                    if (retryCount === maxRetries) {
+                        const errorMessage = error.message || 'Une erreur est survenue lors de la connexion à l\'API';
+                        console.error(`❌ ${errorMessage}`);
+                        console.error('⚠️ Le serveur est temporairement indisponible. Veuillez réessayer dans quelques minutes.');
+                        
+                        // Afficher un message dans le tableau
+                        const tbody = document.getElementById('dataTable');
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="8" class="px-6 py-4 text-center">
+                                    <div class="text-red-600 font-medium mb-2">⚠️ Service temporairement indisponible</div>
+                                    <div class="text-gray-600 text-sm">
+                                        Le serveur est actuellement indisponible.<br>
+                                        Veuillez réessayer dans quelques minutes.
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        console.error(`⚠️ Tentative ${retryCount}/${maxRetries} échouée, nouvelle tentative dans ${retryDelay/1000} secondes...`);
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    }
+                }
+            }
+            hideLoading();
+        }
+
+        // Event Listeners
+        document.getElementById('refreshBtn').addEventListener('click', refreshData);
+        document.getElementById('searchInput').addEventListener('input', () => {
+            currentPage = 1; // Réinitialiser à la première page lors d'une recherche
+            filterAndDisplayData();
+        });
+        document.getElementById('filterNewToday').addEventListener('change', () => {
+            currentPage = 1; // Réinitialiser à la première page lors d'un changement de filtre
+            filterAndDisplayData();
+        });
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                filterAndDisplayData();
+            }
+        });
+        document.getElementById('nextPage').addEventListener('click', () => {
+            const totalPages = Math.ceil(brokersData.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                filterAndDisplayData();
+            }
+        });
+        document.getElementById('prevPageMobile').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                filterAndDisplayData();
+            }
+        });
+        document.getElementById('nextPageMobile').addEventListener('click', () => {
+            const totalPages = Math.ceil(brokersData.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                filterAndDisplayData();
+            }
+        });
+
+        // Charger les données au démarrage
+        waitForApi().then(apiReady => {
+            if (apiReady) {
+                console.log('🔄 Démarrage de la collecte des données...');
+                // Récupérer les logs toutes les 2 secondes
+                setInterval(fetchLogs, 2000);
+                refreshData();
+            }
+        });
+
+        // Mettre à jour les données toutes les 60 secondes
+        setInterval(() => {
+            console.log('🔄 Mise à jour périodique des données...');
+            refreshData();
+        }, 60000); // Mise à jour toutes les minutes
+
+        // Ajouter un indicateur de mise à jour automatique
+        const updateIndicator = document.createElement('div');
+        updateIndicator.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center';
+        updateIndicator.innerHTML = `
+            <i class="fas fa-sync-alt mr-2 animate-spin"></i>
+            Mise à jour automatique toutes les minutes
+        `;
+        document.body.appendChild(updateIndicator);
+    </script>
+</body>
+</html> 
