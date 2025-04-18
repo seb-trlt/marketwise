@@ -21,14 +21,6 @@ jobs:
     - name: Install dependencies
       run: npm install
       
-    - name: Check for running workflow
-      uses: softprops/turnstyle@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        continue-after-seconds: 0
-        same-branch-only: true
-        
     - name: Update data
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -36,35 +28,3 @@ jobs:
         echo "🔄 Démarrage de la mise à jour des données..."
         node update-data.js
         echo "✅ Mise à jour terminée"
-      
-    - name: Notify on failure
-      if: failure()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          try {
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'Échec de la mise à jour des données DubaiLand',
-              body: 'La mise à jour automatique des données a échoué. Veuillez vérifier les logs.'
-            });
-          } catch (error) {
-            console.error('Erreur lors de la création de l\'issue:', error);
-          }
-          
-    - name: Notify on timeout
-      if: cancelled()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          try {
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'Timeout de la mise à jour des données DubaiLand',
-              body: 'La mise à jour a été interrompue car elle a dépassé le temps maximum autorisé (3 heures).'
-            });
-          } catch (error) {
-            console.error('Erreur lors de la création de l\'issue:', error);
-          }
